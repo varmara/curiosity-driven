@@ -1,0 +1,16 @@
+name: "curiosity-driven"
+title: "Curiosity-driven data (re)analysis"
+description: |
+  Анализ данных из любопытства
+base_url: https://varmara.github.io/curiosity-driven/
+output_dir: "docs"
+collections:
+  posts:
+    share: [twitter, facebook]
+navbar:
+  right:
+    - text: "Начало"
+      href: index.html
+    - text: "О блоге"
+      href: about.html
+output: radix::radix_article
