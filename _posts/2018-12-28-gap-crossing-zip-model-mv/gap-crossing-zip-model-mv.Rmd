@@ -5,6 +5,8 @@ description: |
 author:
   - name: Марина Варфоломеева
 date: 12-28-2018
+categories:
+  - ZIP
 output:
   radix::radix_article:
     self_contained: false
