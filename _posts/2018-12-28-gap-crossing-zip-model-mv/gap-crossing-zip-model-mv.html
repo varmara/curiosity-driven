@@ -19,40 +19,37 @@
  <!--/radix_placeholder_import_source-->
 
   <!--radix_placeholder_meta_tags-->
-  <title>Добро пожаловать в блог (Ре)анализ данных из любопытства</title>
+  <title>Прыгающие орангутаны - ZIP модель</title>
   
-  <meta property="description" itemprop="description" content="Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным."/>
+  <meta property="description" itemprop="description" content="В этом посте будет проба Zero Inflated Poisson GLM."/>
   
   
   <!--  https://schema.org/Article -->
-  <meta property="article:published" itemprop="datePublished" content="2018-12-27"/>
-  <meta property="article:created" itemprop="dateCreated" content="2018-12-27"/>
+  <meta property="article:published" itemprop="datePublished" content="2018-12-28"/>
+  <meta property="article:created" itemprop="dateCreated" content="2018-12-28"/>
   <meta name="article:author" content="Марина Варфоломеева"/>
-  <meta name="article:author" content="Ирина Бабкина"/>
-  <meta name="article:author" content="Лаврентий Данилов"/>
-  <meta name="article:author" content="Вадим Хайтов"/>
   
   <!--  https://developers.facebook.com/docs/sharing/webmasters#markup -->
-  <meta property="og:title" content="Добро пожаловать в блог (Ре)анализ данных из любопытства"/>
+  <meta property="og:title" content="Прыгающие орангутаны - ZIP модель"/>
   <meta property="og:type" content="article"/>
-  <meta property="og:description" content="Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным."/>
+  <meta property="og:description" content="В этом посте будет проба Zero Inflated Poisson GLM."/>
   <meta property="og:locale" content="en_US"/>
   
   <!--  https://dev.twitter.com/cards/types/summary -->
   <meta property="twitter:card" content="summary"/>
-  <meta property="twitter:title" content="Добро пожаловать в блог (Ре)анализ данных из любопытства"/>
-  <meta property="twitter:description" content="Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным."/>
+  <meta property="twitter:title" content="Прыгающие орангутаны - ZIP модель"/>
+  <meta property="twitter:description" content="В этом посте будет проба Zero Inflated Poisson GLM."/>
   
   <!--/radix_placeholder_meta_tags-->
   <!--radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-rmarkdown-metadata">
-  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","categories","output"]}},"value":[{"type":"character","attributes":{},"value":["Добро пожаловать в блог (Ре)анализ данных из любопытства"]},{"type":"character","attributes":{},"value":["Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным.\n"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Марина Варфоломеева"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Ирина Бабкина"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Лаврентий Данилов"]}]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Вадим Хайтов"]}]}]},{"type":"character","attributes":{},"value":["12-27-2018"]},{"type":"character","attributes":{},"value":["Структура блога"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["radix::radix_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["self_contained","toc"]}},"value":[{"type":"logical","attributes":{},"value":[false]},{"type":"logical","attributes":{},"value":[true]}]}]}]}
+  {"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["title","description","author","date","output","draft"]}},"value":[{"type":"character","attributes":{},"value":["Прыгающие орангутаны - ZIP модель"]},{"type":"character","attributes":{},"value":["В этом посте будет проба Zero Inflated Poisson GLM.\n"]},{"type":"list","attributes":{},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["name"]}},"value":[{"type":"character","attributes":{},"value":["Марина Варфоломеева"]}]}]},{"type":"character","attributes":{},"value":["12-28-2018"]},{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["radix::radix_article"]}},"value":[{"type":"list","attributes":{"names":{"type":"character","attributes":{},"value":["self_contained"]}},"value":[{"type":"logical","attributes":{},"value":[false]}]}]},{"type":"logical","attributes":{},"value":[true]}]}
   </script>
   <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["welcome_files/bowser-1.9.3/bowser.min.js","welcome_files/distill-2.2.21/template.v2.js","welcome_files/jquery-1.11.3/jquery.min.js","welcome_files/webcomponents-2.0.0/webcomponents.js"]}
+  {"type":"NULL"}
   </script>
   <!--radix_placeholder_navigation_in_header-->
   <!--/radix_placeholder_navigation_in_header-->
@@ -930,10 +927,10 @@
   </script>
   
   <!--/radix_placeholder_distill-->
-  <script src="welcome_files/jquery-1.11.3/jquery.min.js"></script>
-  <script src="welcome_files/bowser-1.9.3/bowser.min.js"></script>
-  <script src="welcome_files/webcomponents-2.0.0/webcomponents.js"></script>
-  <script src="welcome_files/distill-2.2.21/template.v2.js"></script>
+  <script src="gap-crossing-zip-model-mv_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="gap-crossing-zip-model-mv_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="gap-crossing-zip-model-mv_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="gap-crossing-zip-model-mv_files/distill-2.2.21/template.v2.js"></script>
   <!--radix_placeholder_site_in_header-->
   <!--/radix_placeholder_site_in_header-->
 
@@ -945,7 +942,7 @@
 <!--radix_placeholder_front_matter-->
 
 <script id="distill-front-matter" type="text/json">
-{"title":"Добро пожаловать в блог (Ре)анализ данных из любопытства","description":"Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным.","authors":[{"author":"Марина Варфоломеева","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#"},{"author":"Ирина Бабкина","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#"},{"author":"Лаврентий Данилов","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#"},{"author":"Вадим Хайтов","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#"}],"publishedDate":"2018-12-27T00:00:00.000+03:00","citationText":"Варфоломеева, et al., 2018"}
+{"title":"Прыгающие орангутаны - ZIP модель","description":"В этом посте будет проба Zero Inflated Poisson GLM.","authors":[{"author":"Марина Варфоломеева","authorURL":"#","affiliation":"&nbsp;","affiliationURL":"#"}],"publishedDate":"2018-12-28T00:00:00.000+03:00","citationText":"Варфоломеева, 2018"}
 </script>
 
 <!--/radix_placeholder_front_matter-->
@@ -955,80 +952,35 @@
 <!--/radix_placeholder_site_before_body-->
 
 <div class="d-title">
-<h1>Добро пожаловать в блог (Ре)анализ данных из любопытства</h1>
-<p>Мы создали блог (Ре)анализ данных из любопытства, чтобы учиться применять разные методы анализа к реальным данным.</p>
+<h1>Прыгающие орангутаны - ZIP модель</h1>
+<p>В этом посте будет проба Zero Inflated Poisson GLM.</p>
 </div>
 
 <div class="d-byline">
   Марина Варфоломеева  
   
-,   Ирина Бабкина  
-  
-,   Лаврентий Данилов  
-  
-,   Вадим Хайтов  
-  
-<br/>12-27-2018
+<br/>12-28-2018
 </div>
 
 <div class="d-article">
-<h3 class="d-toc-header">Table of Contents</h3>
-<nav class="d-toc" id="TOC">
-<ul>
-<li><a>Цели:</a></li>
-<li><a>Формат:</a></li>
-<li><a href="#-">Структура проекта:</a></li>
-<li><a href="#---">Сценарий работы с репозиторием:</a></li>
-<li><a>Данные:</a></li>
-</ul>
-</nav>
-<hr class="d-toc-separator"/>
-<p>Искусство анализа данных сложно постичь, решая тщательно подобранные примеры в Университетских курсах статистики. Мы создали блог “(Ре)анализ данных из любопытства”, чтобы учиться применять разные методы анализа к реальным данным.</p>
-<p>В этом посте — наш первоначальный план действий. Текущая версия будет <a href="../../about.html">на странице о блоге</a>.</p>
-<h2>Цели:</h2>
-<ul>
-<li>Анализируем данные в “боевых” условиях.</li>
-<li>Развиваем понимание знакомых методов, чтобы отойти от рецептов.</li>
-<li>Изучаем новые методы анализа.</li>
-</ul>
-<h2>Формат:</h2>
-<ul>
-<li>Находим интересные данные.</li>
-<li>Делаем разведочный анализ.</li>
-<li>Пытаемся воспроизвести анализ авторов данных настолько, насколько это возможно по описанию. Находим ограничения и сильные стороны.</li>
-<li>Предлагаем свои альтернативные методы решения. (Или решаем совсем другие вопросы, используя эти данные для отработки новых для нас методов).</li>
-<li>Собираемся вместе и обсуждаем, что получилось.</li>
-<li>По итогам обсуждения пишем пост в блог.</li>
-<li>Стараемся повторять все это регулярно…</li>
-</ul>
-<h2 id="-">Структура проекта:</h2>
-<p>Общий репозиторий. В ветке <code>master</code> лежит этот блог.</p>
-<p>Уверены ли мы, что мы хотим все одновременно работать над одним и тем же анализом? Сложно придумать структуру репозитория, которая бы это легко позволяла. Непонятно, как разделить черновики от разных авторов.</p>
-<h2 id="---">Сценарий работы с репозиторием:</h2>
-<ol type="1">
-<li><p>Блог написан в формате radix. <a href="https://rstudio.github.io/radix/blog.html">Руководство по radix</a>.</p></li>
-<li><p><strong>Каждый человек создает черновик</strong>. Названия постов описательные. Использованные методы пишем в yaml-шапке (категории).</p></li>
-</ol>
 <div class="layout-chunk" data-layout="l-body">
 <pre class="r"><code>
-library(radix)
-create_post(&quot;Описательное название (Автор)&quot;, draft = TRUE)</code></pre>
+library(readxl)
+gap &lt;- read_excel(&#39;../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx&#39;, sheet = 1)
+head(gap)</code></pre>
+<pre><code>
+# A tibble: 6 x 6
+  `individual nam… `age in years o… `forearm length… `actual gap cro…
+  &lt;chr&gt;                       &lt;dbl&gt;            &lt;dbl&gt;            &lt;dbl&gt;
+1 Mawas                           1             12.8                0
+2 Mawas                           1             12.8                0
+3 Mawas                           1             12.8                0
+4 Mawas                           1             12.8                0
+5 Mawas                           1             12.8                1
+6 Mawas                           1             12.8                0
+# ... with 2 more variables: `crossing behaviour` &lt;chr&gt;, `takeoff
+#   support` &lt;chr&gt;</code></pre>
 </div>
-<ol start="3" type="1">
-<li>После обсуждения создаем общий черновик и складываем туда лучшие куски. <strong>Публикуем вручную объединенную версию</strong>, если есть консенсус. <strong>Или частные версии</strong>, если есть интересные авторские подходы.</li>
-</ol>
-<h2>Данные:</h2>
-<p>Данные можем складывать в отдельную папку, т.к. одни и те же данные можно проанализировать в нескольких постах. <strong>Если есть малейшие сомнения в том, что данные можно скачивать</strong> — лучше скачать их локально и добавить в .gitignore, а в текст вставить ссылку (“скачайте данные бла-бла-бла”).</p>
-<p>Папка с данными <code>../../_data</code> лежит на два уровня выше, чем сам пост, она не публикуется на сайте, но есть в репозитории.</p>
-<p>Формат названий данных: <code>максимум-4-слова-о-чем-данные-автор-год</code>.</p>
-<p>К каждому файлу с данными должен быть текстовый файл <code>максимум-4-слова-о-чем-данные-автор-год.info</code>:</p>
-<ul>
-<li>Описание происхождения файла</li>
-<li>Цитата (Apa-style из Google Scholar)</li>
-<li>URL</li>
-<li>Дата обращения</li>
-</ul>
-<p>Все обсуждаемо.</p>
 <!--radix_placeholder_article_footer-->
 <!--/radix_placeholder_article_footer-->
 </div>

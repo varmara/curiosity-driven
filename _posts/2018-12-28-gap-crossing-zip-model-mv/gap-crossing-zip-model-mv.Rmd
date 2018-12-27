@@ -1,0 +1,23 @@
+---
+title: "Прыгающие орангутаны - ZIP модель"
+description: |
+  В этом посте будет проба Zero Inflated Poisson GLM.
+author:
+  - name: Марина Варфоломеева
+date: 12-28-2018
+output:
+  radix::radix_article:
+    self_contained: false
+draft: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
+head(gap)
+```
+
