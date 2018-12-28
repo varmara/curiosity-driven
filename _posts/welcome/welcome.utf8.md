@@ -15,13 +15,7 @@ output:
     self_contained: false
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 
-# Learn more about creating blogs with Radix at:
-# https://rstudio.github.io/radix/blog.html
-
-```
 
 Искусство анализа данных сложно постичь, решая тщательно подобранные примеры в Университетских курсах статистики. Мы создали блог "(Ре)анализ данных из любопытства", чтобы учиться применять разные методы анализа к реальным данным.
 
@@ -50,10 +44,15 @@ knitr::opts_chunk$set(echo = TRUE)
 1. Работаем с черновиком в своей именной ветке, потом делаем [pull request](https://help.github.com/articles/about-pull-requests/).
 2. Каждый человек создает черновик. Названия описательные, **на английском**, разделитель "-". Файл с черновиком лежит в отдельной папке в директории `_posts`.
 
-```{r eval=FALSE}
+<div class="layout-chunk" data-layout="l-body">
+
+```r
 library(radix)
 create_post("Descriptive-title-Author-", draft = TRUE)
 ```
+
+</div>
+
 
 3. Считаем. Пишем. Основы [форматирования в radix](https://rstudio.github.io/radix/basics.html).
 4. Заполняем [мета-данные radix](https://rstudio.github.io/radix/metadata.html) в yaml-шапке:  
