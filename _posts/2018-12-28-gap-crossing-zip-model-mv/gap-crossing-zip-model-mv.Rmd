@@ -10,6 +10,8 @@ categories:
 output:
   radix::radix_article:
     self_contained: false
+bibliography: "references.bib"
+csl: "../../_bibs/apa-single-spaced.csl"
 draft: true
 ---
 
@@ -22,4 +24,8 @@ library(readxl)
 gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
 head(gap)
 ```
+
+## Пример цитаты
+
+Данные о поведении орангутанов [@chappell2015ontogeny].
 
