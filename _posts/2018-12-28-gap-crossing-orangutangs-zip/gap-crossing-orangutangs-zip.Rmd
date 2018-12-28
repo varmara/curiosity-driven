@@ -1,0 +1,28 @@
+---
+title: "Прыгающие орангутаны - ZIP модель"
+description: |
+  В этом посте будет Zero Inflated Poisson модель.
+author:
+  - name: Марина Варфоломеева
+date: 12-28-2018
+categories:
+  - ZIP
+output:
+  radix::radix_article:
+    self_contained: false
+bibliography: "references.bib"
+csl: "../../_bibs/apa-single-spaced.csl"
+draft: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readxl)
+gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
+head(gap)
+```
+
+Данные о поведении орангутанов [@chappell2015ontogeny].
