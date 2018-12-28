@@ -3,6 +3,7 @@ title: "Curiosity-driven data (re)analysis"
 description: |
   Анализ данных из любопытства
 base_url: https://varmara.github.io/curiosity-driven/
+google_analytics: "UA-131394930-1"
 repository_url: https://github.com/varmara/curiosity-driven
 creative_commons: CC BY-NC
 output_dir: "docs"
