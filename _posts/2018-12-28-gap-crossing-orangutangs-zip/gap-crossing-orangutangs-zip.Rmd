@@ -19,10 +19,190 @@ draft: true
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r libs-funs}
+library(tidyverse)
+library(cowplot)
+library(ggplot2)
+theme_set(theme_bw())
 library(readxl)
-gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
-head(gap)
+library(lme4)
+library(glmmADMB)
+library(glmmTMB)
+library(sjstats)
+library(emmeans)
 ```
 
+```{r read-data}
+gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
+colnames(gap) <- c('name', 'age', 'forearm', 'AGC', 'behaviour', 'support')
+gap <- gap %>% mutate(name = factor(name), 
+                      behaviour = factor(behaviour), 
+                      support = factor(support), 
+                      forearm_std = as.numeric(scale(forearm)))
+gap$name <- reorder(gap$name, gap$age, mean)
+```
+
+### Введение
+
 Данные о поведении орангутанов [@chappell2015ontogeny].
+
+Бла-бла
+
+### Разведочный анализ
+
+Очень несбалансированные данные.
+По одному орангутану каждого возраста (и с соотв. длиной руки).
+Много наблюдений за каждым орангутаном.
+Не все сочетания типа поведения и опоры есть для каждого орангутана. 
+
+```{r}
+with(gap, table(name, behaviour, support))
+```
+
+```{r dot-plot}
+plot_grid(
+  ggplot(gap, aes(x = forearm, y = 1:nrow(gap))) + geom_point(),
+  ggplot(gap, aes(x = AGC, y = 1:nrow(gap))) + geom_point(),
+  nrow = 1)
+```
+
+```{r zeros}
+mean(gap$AGC == 0)
+hist(gap$AGC)
+```
+
+```{r response-by-subject}
+pos <- position_jitterdodge(jitter.width = 0.2, jitter.height = 0.4, dodge.width = 0.5)
+ggplot(gap, aes(x = name, y = AGC, fill = support, colour = support)) + 
+  geom_point(alpha = 0.5, position = pos) + 
+  facet_wrap(~ behaviour) + 
+  coord_flip() + 
+  theme(legend.position = 'bottom', axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+### Poisson GLMM
+
+```{r mod-pois-lme4, cache=TRUE}
+M1 <- glmer(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'poisson', control = glmerControl(optimizer = 'bobyqa',
+                               optCtrl = list(maxfun = 2e6)))
+```
+
+```{r mod-pois-lme4-diag}
+AIC(M1)
+overdisp(M1)
+# Сверхдисперсии нет!!! Можно было бы продолжать дальше так
+plot(M1)
+
+# M2 <- glmer.nb(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap)
+# overdisp(M2)
+
+# M3 <- glmer(AGC ~ (behaviour + support + forearm_std)^2 + (1|name) + (1|OLRI), data = gap, family = 'poisson')
+# overdisp(M3)
+```
+
+
+## Zero Inflated Poisson GLMM
+
+### ADMB
+
+```{r mod-zip-admb, cache=TRUE}
+Z1 <- glmmadmb(AGC ~ (behaviour + support + forearm_std)^2 , data = gap, family = 'poisson', zeroInflation = TRUE, random = ~ (1|name))
+```
+
+```{r mod-zip-admb-diag}
+summary(Z1)
+p <- length(fixef(Z1)) + length(ranef(Z1)) + Z1$zeroInflation
+sum(resid(Z1, type = 'pearson')^2) / (nrow(gap) - p)
+
+# Вот как считает пирсоновские остатки glmmADMB
+# Z1$residuals/Z1$sd.est, внутри знаменатель, видимо, считается как sqrt(mu):
+# getAnywhere(residuals.glmmadmb)
+
+# Сверхдисперсия вручную
+# Пуассоновская часть
+X_count <- model.matrix(~ (behaviour + support + forearm_std)^2, data = gap)
+beta_count <- fixef(Z1)
+name_ID <- as.numeric(as.factor(gap$name))
+a <- ranef(Z1)$name
+mu_count <- exp(X_count %*% beta_count + a[name_ID])
+# fitted(Z1) это на самом деле mu_count
+# head(cbind(fitted(Z1), mu_count, E_y))
+
+# Биномиальная часть отсутствует. Не понимаю, как это получается, но ее результаты уже включены в пуассоновскую часть
+# И вот это уже можно не включать в расчеты
+# pi_zi <- exp(Z1$pz)/(1 + exp(Z1$pz))
+
+# Считаем пирсоновские остатки вручную
+# Формулы для матожидания и дисперсии будут
+# использоваться для Пуассоновской части
+# E(y) = mu
+# Var(y) = mu
+E_y <- mu_count
+Var_y <- mu_count
+# And calculate the Pearson residuals
+e_pears <- (gap$AGC - E_y) / sqrt(Var_y)
+N <- nrow(gap)
+p <- length(fixef(Z1)) + length(ranef(Z1)) + Z1$zeroInflation
+sum(e_pears^2)/(N - p)
+```
+
+### TMB
+
+Альтернативный вариант подбора в glmmTMB быстрый, но нет полезных функций. Например, Пирсоновские остатки приходится считать вручную.
+
+```{r mod-pois-tmb, cache=TRUE}
+B1 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'poisson')
+overdisp(B1)
+
+# B2 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'NB2')
+# overdisp(B2)
+# 
+# B3 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name) + (1|OLRI), data = gap, family = 'poisson')
+# overdisp(B3)
+```
+
+```{r mod-zip-tmb, cache=TRUE}
+B4 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = poisson, ziformula = ~ 1)
+```
+
+```{r mod-zip-tmb-diag}
+summary(B4)
+# пирсоновские остатки не считаются
+# resid(B4, type = 'pearson')
+# overdisp(B4)
+# Сверхдисперсия вручную
+# Пуассоновская часто
+X_count <- model.matrix(~ (behaviour + support + forearm_std)^2, data = gap)
+beta_count <- fixef(B4)$cond
+name_ID <- as.numeric(as.factor(gap$name))
+a <- ranef(B4)$cond$name
+mu_count <- exp(X_count %*% beta_count + a[name_ID,])
+# Биномиальная часть
+X_zi <- model.matrix(~ 1, data = gap)
+beta_zi <- fixef(B4)$zi
+pi_zi <- exp(X_zi %*% beta_zi)/(1 + exp(X_zi %*% beta_zi))
+# Считаем пирсоновские остатки вручную
+# Формулы для матожидания и дисперсии
+# E(y) = (1 - pi_zi) * mu
+# Var(y) = mu + pi / (1 - pi) *  mu^2 
+# Кстати, это так же = (1−π)μ(1+μπ)
+E_y <- (1 - pi_zi) * mu_count
+Var_y <- mu_count + pi_zi  / (1 - pi_zi) * mu_count^2
+# Пирсоновские остатки
+e_pears <- (gap$AGC - E_y) / sqrt(Var_y)
+# Сверхдисперсия
+N <- nrow(gap)
+p <- length(fixef(B4)$cond) + length(fixef(B4)$zi) + 1
+sum(e_pears^2)/(N - p)
+# Ок
+
+# Графики остатков
+plot(fitted(B4), e_pears)
+plot(gap$behaviour, e_pears)
+plot(gap$support, e_pears)
+plot(gap$name, e_pears)
+plot(gap$forearm, e_pears)
+plot(gap$age, e_pears)
+# 
+```
+
