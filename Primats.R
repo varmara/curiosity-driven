@@ -1,0 +1,169 @@
+#Откроем данные. Перевела в формат csv потому что exelкапризничал при открытии. 
+primat<-read.csv("journal.pone.0130291.s001.csv", stringsAsFactors = TRUE, dec = ",")
+str(primat)
+
+#переименуем олонки во что-то более короткое
+colnames(primat)<-c("ID", "age","forearm", "AGC", "behaviour", "takeoff")
+
+#Попробуем воспроизвести график №3 из статьи
+library(ggplot2)
+ggplot(primat, aes(age, fill = behaviour)) + stat_count(position = position_dodge())
+# как мы видим, получается абсолютное количество перелезаний. А в статье относительное к числу дней, которые наблюдали за каждым отдельным животным. Сколько за кем наблюдали есть в табл №1 в тексте статьи. В файле с данными ее нет. 
+
+# Рассчитаем относительную частоту перелезаний.
+library(dplyr)
+frec<-rbind(
+primat[primat$ID =="Mawas",] %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Kino",]  %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Jip",]  %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Deri",]  %>% count(behaviour, age) %>% mutate(freq = n/7),
+primat[primat$ID =="Jerry",]  %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Streisel",]  %>% count(behaviour, age) %>% mutate(freq = n/9),
+primat[primat$ID =="Milo",]  %>% count(behaviour, age) %>% mutate(freq = n/7), 
+primat[primat$ID =="Kondor",]  %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Juni"|primat$ID =="Kerry",]  %>% count(behaviour, age) %>% mutate(freq = n/10),
+primat[primat$ID =="Gismo"|primat$ID =="Preman",]  %>% count(behaviour, age) %>% mutate(freq = n/7))
+
+#создадим последовательный возрастной ряд для красоты графика
+frec$age<-factor(frec$age,levels =  c("1","2","3","4","5","6","7","8","9","10","11","AF","AM"))
+
+#Собственно график №3
+ggplot(frec, aes(age, freq, fill = behaviour))+stat_identity(geom = "bar",position = position_dodge())
+
+#Аналогично для графика №4
+take<-rbind(
+  primat[primat$ID =="Mawas",] %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Kino",]  %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Jip",]  %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Deri",]  %>% count(takeoff, age) %>% mutate(freq = n/7),
+  primat[primat$ID =="Jerry",]  %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Streisel",]  %>% count(takeoff, age) %>% mutate(freq = n/9),
+  primat[primat$ID =="Milo",]  %>% count(takeoff, age) %>% mutate(freq = n/7), 
+  primat[primat$ID =="Kondor",]  %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Juni"|primat$ID =="Kerry",]  %>% count(takeoff, age) %>% mutate(freq = n/10),
+  primat[primat$ID =="Gismo"|primat$ID =="Preman",]  %>% count(takeoff, age) %>% mutate(freq = n/7))
+
+take$age<-factor(take$age,levels =  c("1","3","4","5","6","7","9","11","AF","AM"))
+
+#Собственно график №4
+ggplot(take, aes(age, freq, fill = takeoff))+stat_identity(geom = "bar",position = position_dodge())
+
+#Воспроизведем табл№2 про Хи-квадрат
+#Рассчитаем округленные ожидаемые частоты и соберем их в матрицу
+take$r_freq<-take$freq %/% 1
+t_obs<-matrix(take$r_freq, nrow = 10, ncol = 3, byrow = 3)
+
+#Встроенный Хи-квадрат тест дает смещенные оценки из-за округления. Посчитаем ручками
+chi_all<-chisq.test(t_obs)
+chi_all$expected
+
+#Посчитаем row total  и col total из таблицы №2
+t_total<-matrix(take$freq, nrow = 10, ncol = 3, byrow = T)
+row_total<-rowSums(t_total)%/%1
+col_total<-colSums(t_total)%/%1
+sum(t_total)%/%1
+
+#Посчитаем ожидаемые значения по формуле хи-квадрата. Я хз почему, но они отличаются немного от табличных. Хотя исходники все такие же точно...
+t_exp<-sapply(col_total, function(x){(x*row_total)/982})
+
+#Посчитаем собственно значение хи_квадрата
+chi_sq<-sum(((t_obs - t_exp)^2)/t_exp)
+
+#Посчитаем стандартизованные остатки
+std_resid<-(t_obs - t_exp)/sqrt(t_exp)
+
+#Построим график №6
+primat$rel_AGC<-(primat$AGC*100)/primat$forearm
+
+ggplot(primat, aes(forearm, rel_AGC, color = behaviour))+geom_point(position = position_jitter(width = 0.3))
+
+#Построим график распределения AGC в зависимости от индивида
+ggplot(primat, aes(AGC))+geom_bar(position = position_dodge())+facet_grid(.~ID)
+
+#Займемся наконец линейной моделью. Для начала попробуем сделать GLMM с пуассоновским распределением отклика как нас учили на курсе. 
+
+library(lme4)
+#я взяла ту формулу, которая предложена в статье как итоговая
+model<-formula(AGC~forearm+behaviour+takeoff+forearm:behaviour+forearm:takeoff + takeoff:behaviour+ (1|ID))
+
+#Попробуем подобрать модель в лоб. Как она есть в первичных данных
+M1<-glmer(model, family = "poisson", data = primat)
+
+#Модель не сходится. Предлалается стандартизовать непрерывный предиктор. Он у нас один: длина руки forearm
+primat$std_forearm<-(primat$forearm - mean(primat$forearm))/sd(primat$forearm)
+
+model_std<-formula(AGC~std_forearm+behaviour+takeoff+std_forearm:behaviour+std_forearm:takeoff+takeoff:behaviour + (1|ID))
+
+#подберем стандартизованную модель. Сходится.
+M2<-glmer(model_std, family = "poisson", data = primat)
+
+#Проверим модель на сверхдисперсию. И...ее нет! Что странно. Если модель и так нормальная, то зачем ZIM? Не знаю(
+library(sjstats)
+overdisp(M2)
+# Нарисуем график остаков от модели. Что тут видно я не оч понимаю...(мне стыдно)
+M2_diag <- data.frame(primat,
+                      .fitted = predict(M2, type = "response"),
+                      .pears_resid = residuals(M2, type = "pearson"))
+
+gg_resid <- ggplot(M2_diag, aes(x = .fitted, y = .pears_resid, colour = ID)) +   geom_point() + facet_grid(behaviour ~ takeoff)
+gg_resid
+# В статье представлена табличка с anova для взаимодействий. Казалось бы проще всего сделать drop1. Но тут проблема с несходимостью уменьшенных моделей
+drop1(M2, test = "Chi")
+
+#Подберем вложенные модели, из каждой из которых удалено какое-то одно взаимодействие. Ничего удивительного, что несходимость осталась, а результаты anova совпали с drop1 :)
+M3<-glmer(AGC~std_forearm+behaviour+takeoff+std_forearm:behaviour+std_forearm:takeoff + (1|ID), family = "poisson", data = primat)
+M4<-glmer(AGC~std_forearm+behaviour+takeoff+std_forearm:behaviour+takeoff:behaviour + (1|ID), family = "poisson", data = primat)
+M5<-glmer(AGC~std_forearm+behaviour+takeoff+std_forearm:takeoff+takeoff:behaviour + (1|ID), family = "poisson", data = primat)
+#Проведем anova для нашей модели и для уменьшенных вложенных
+anova(M2, M3)
+anova(M2, M4)
+anova(M2, M5)
+
+#Нарисуем графики предсказаний модели. На исходных данных! 
+library(dplyr)
+newdata<-primat
+X<-model.matrix(~std_forearm+behaviour+takeoff+std_forearm:behaviour+std_forearm:takeoff+takeoff:behaviour, data = newdata)
+newdata$fit_eta <- X %*% fixef(M2)
+newdata$SE_eta <- sqrt(diag(X %*% vcov(M2) %*% t(X)))
+newdata$fit_mu <- exp(newdata$fit_eta)
+newdata$lwr <- exp(newdata$fit_eta - 2 * newdata$SE_eta)
+newdata$upr <- exp(newdata$fit_eta + 2 * newdata$SE_eta)
+head(newdata)
+
+#График №5а
+ggplot(newdata, aes(forearm, fit_mu, color= takeoff))+stat_summary(fun.data = "mean_cl_boot")+stat_summary(fun.data = "mean_cl_boot", geom = "line")
+#График №5б
+ggplot(newdata, aes(forearm, fit_mu, color= behaviour))+stat_summary(fun.data = "mean_cl_boot")+stat_summary(fun.data = "mean_cl_boot", geom = "line")
+#График №5с
+ggplot(newdata, aes(behaviour, fit_mu, color= takeoff))+stat_summary(fun.data = "mean_cl_boot")
+
+#Попробуем подобрать модель с помощью пакета из статьи. Считается долго, у меня минут 15.
+library(glmmADMB)
+Zm_1<-glmmadmb(formula = AGC~forearm+behaviour+takeoff+forearm:behaviour+forearm:takeoff + takeoff:behaviour+ (1|ID), data = primat, family = "poisson", link = "log", zeroInflation = T)
+summary(Zm_1)
+
+#Диагностические графики остатков
+Zm1_diag <- data.frame(primat,
+                      .fitted = predict(Zm_1, type = "response"),
+                      .pears_resid = residuals(Zm_1, type = "pearson"))
+
+gg_resid <- ggplot(Zm1_diag, aes(x = .fitted, y = .pears_resid, colour = ID)) +   geom_point() + facet_grid(behaviour ~ takeoff)
+gg_resid
+
+#Проверим модель на сверхдисперсию. И ее тоже нет. И значение близкое к модели с простым пуассоном
+overdisp_fun <- function(model) {
+  ## number of variance parameters in 
+  ##   an n-by-n variance-covariance matrix
+  vpars <- function(m) {
+    nrow(m)*(nrow(m)+1)/2
+  }
+  model.df <- sum(sapply(VarCorr(model),vpars))+length(fixef(model))
+  rdf <- nrow(model.frame(model))-model.df
+  rp <- residuals(model,type="pearson")
+  Pearson.chisq <- sum(rp^2)
+  prat <- Pearson.chisq/rdf
+  pval <- pchisq(Pearson.chisq, df=rdf, lower.tail=FALSE)
+  c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
+}
+overdisp_fun(Zm_1)
+
