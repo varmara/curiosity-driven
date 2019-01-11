@@ -51,7 +51,7 @@
   <!--/radix_placeholder_rmarkdown_metadata-->
   
   <script type="text/json" id="radix-resource-manifest">
-  {"type":"character","attributes":{},"value":["gap-crossing-orangutangs-zip_files/figure-html5/dot-plot-1.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-pois-lme4-diag-1.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-1.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-2.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-3.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-4.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-5.png","gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-6.png","gap-crossing-orangutangs-zip_files/figure-html5/response-by-subject-1.png","gap-crossing-orangutangs-zip_files/figure-html5/zeros-1.png","references.bib"]}
+  {"type":"character","attributes":{},"value":["gap-crossing-orangutangs-zip-mv_files/figure-html5/dot-plot-1.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-pois-lme4-diag-1.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-1.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-2.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-3.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-4.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-5.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-6.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/response-by-subject-1.png","gap-crossing-orangutangs-zip-mv_files/figure-html5/zeros-1.png","references.bib"]}
   </script>
   <!--radix_placeholder_navigation_in_header-->
   <!--/radix_placeholder_navigation_in_header-->
@@ -929,10 +929,10 @@
   </script>
   
   <!--/radix_placeholder_distill-->
-  <script src="gap-crossing-orangutangs-zip_files/jquery-1.11.3/jquery.min.js"></script>
-  <script src="gap-crossing-orangutangs-zip_files/bowser-1.9.3/bowser.min.js"></script>
-  <script src="gap-crossing-orangutangs-zip_files/webcomponents-2.0.0/webcomponents.js"></script>
-  <script src="gap-crossing-orangutangs-zip_files/distill-2.2.21/template.v2.js"></script>
+  <script src="gap-crossing-orangutangs-zip-mv_files/jquery-1.11.3/jquery.min.js"></script>
+  <script src="gap-crossing-orangutangs-zip-mv_files/bowser-1.9.3/bowser.min.js"></script>
+  <script src="gap-crossing-orangutangs-zip-mv_files/webcomponents-2.0.0/webcomponents.js"></script>
+  <script src="gap-crossing-orangutangs-zip-mv_files/distill-2.2.21/template.v2.js"></script>
   <!--radix_placeholder_site_in_header-->
   <!--/radix_placeholder_site_in_header-->
 
@@ -1054,7 +1054,7 @@ plot_grid(
   ggplot(gap, aes(x = forearm, y = 1:nrow(gap))) + geom_point(),
   ggplot(gap, aes(x = AGC, y = 1:nrow(gap))) + geom_point(),
   nrow = 1)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/dot-plot-1.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/dot-plot-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre class="r"><code>
@@ -1063,7 +1063,7 @@ mean(gap$AGC == 0)</code></pre>
 [1] 0.227693</code></pre>
 <pre class="r"><code>
 hist(gap$AGC)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/zeros-1.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/zeros-1.png" width="624" /></p>
 </div>
 <div class="layout-chunk" data-layout="l-body">
 <pre class="r"><code>
@@ -1073,7 +1073,7 @@ ggplot(gap, aes(x = name, y = AGC, fill = support, colour = support)) +
   facet_wrap(~ behaviour) + 
   coord_flip() + 
   theme(legend.position = &#39;bottom&#39;, axis.text.x = element_text(angle = 90, hjust = 1))</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/response-by-subject-1.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/response-by-subject-1.png" width="624" /></p>
 </div>
 <h3 id="poisson-glmm">Poisson GLMM</h3>
 <div class="layout-chunk" data-layout="l-body">
@@ -1097,7 +1097,7 @@ overdisp(M1)</code></pre>
 <pre class="r"><code>
 # Сверхдисперсии нет!!! Можно было бы продолжать дальше так
 plot(M1)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-pois-lme4-diag-1.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-pois-lme4-diag-1.png" width="624" /></p>
 <pre class="r"><code>
 # M2 &lt;- glmer.nb(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap)
 # overdisp(M2)
@@ -1312,22 +1312,22 @@ sum(e_pears^2)/(N - p)</code></pre>
 
 # Графики остатков
 plot(fitted(B4), e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-1.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-1.png" width="624" /></p>
 <pre class="r"><code>
 plot(gap$behaviour, e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-2.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-2.png" width="624" /></p>
 <pre class="r"><code>
 plot(gap$support, e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-3.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-3.png" width="624" /></p>
 <pre class="r"><code>
 plot(gap$name, e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-4.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-4.png" width="624" /></p>
 <pre class="r"><code>
 plot(gap$forearm, e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-5.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-5.png" width="624" /></p>
 <pre class="r"><code>
 plot(gap$age, e_pears)</code></pre>
-<p><img src="gap-crossing-orangutangs-zip_files/figure-html5/mod-zip-tmb-diag-6.png" width="624" /></p>
+<p><img src="gap-crossing-orangutangs-zip-mv_files/figure-html5/mod-zip-tmb-diag-6.png" width="624" /></p>
 <pre class="r"><code>
 # </code></pre>
 </div>
