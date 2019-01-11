@@ -1,5 +1,24 @@
+---
+title: "gap-crossing-LD-"
+description: |
+  A short description of the post.
+author:
+  - name: Лаврентий Данилов
+    url: {}
+date: 01-11-2019
+output:
+  radix::radix_article:
+    self_contained: false
+draft: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r}
 #Откроем данные. Перевела в формат csv потому что exelкапризничал при открытии. 
-primat<-read.csv("journal.pone.0130291.s001.csv", stringsAsFactors = TRUE, dec = ",")
+primat<-read.csv("../../_data/gap-crossing-behaviour-Chappell-et-al-2015.csv", stringsAsFactors = TRUE, dec = ",")
 str(primat)
 
 #переименуем олонки во что-то более короткое
@@ -166,4 +185,8 @@ overdisp_fun <- function(model) {
   c(chisq=Pearson.chisq,ratio=prat,rdf=rdf,p=pval)
 }
 overdisp_fun(Zm_1)
+
+
+```
+
 
