@@ -18,3 +18,5 @@ glmmTMB
 sjstats
 emmeans
 bindrcpp
+broom.mixed
+dotwhisker

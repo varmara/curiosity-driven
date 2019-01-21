@@ -12,52 +12,113 @@ output:
     self_contained: false
 bibliography: "references.bib"
 csl: "../../_bibs/apa-single-spaced.csl"
+toc: true
 draft: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, tidy = FALSE)
 ```
 
+## Введение
+
+Анализ счетных величин при помощи обобщенных линейных моделей традиционно начинают с моделей, основанных на распределении Пуассона. 
+
+$y_i \sim Poisson(\mu_i)$  
+$E(y_i) = \mu_i$, $var(y_i) = \mu_i$   
+$log(\mu_i) = \eta_i$   
+$\eta_i = \beta_0 + \beta_1 x_{1i} + \ldots + \beta_{p - 1}x_{p - 1}$
+
+В случае, если данные не соответствуют свойствам этого распределения (дисперсия превышает мат.ожидание), может помочь использование отрицательного биномиального распределения. Дополнительный параметр $k$ позволяет описать эту избыточность дисперсии.
+
+$y_i \sim NegBin(\mu_i, k)$  
+$E(y_i) = \mu_i$, $var(y_i) = \mu_i + \mu_i^2 / k$  
+$log(\mu_i) = \eta_i$   
+$\eta_i = \beta_0 + \beta_1 x_{1i} + \ldots + \beta_{p - 1}x_{p - 1}$
+
+В смешанных моделях к последней строке уравнений добавляются еще и случайные эффекты.
+
+Одним из источников сверхдисперсии может быть слишком большое число нулей в исходных данных --- больше, чем предсказывает выбранное распределение. В случае избыточности нулей применяют zero-inflated или zero-altered (hurdle) модели.
+
+Как разные модели ведут себя с нулями?
+
+В обычных моделях для счетных данных у нулей один единственный источник --- само распределение Пуассона или отр. биномиальное.
+
+В zero-inflated моделях используется _смесь распределений_ --- Биномиального и одного из обычных счетных распределений. Смесь распределений --- это такое распределение-химера, которое за счет своей биномиальной части способно производить больше нулей, чем исходное счетное. Некоторое количество нулей по-прежнему производит счетная часть, а недостающие --- биномиальная. Чаще всего используется Zero-inflated Poisson (ZIP).
+
+В zero-altered (hurdle) моделях используется _два отдельных распределения_. Биномиальное распределение предсказывает, будет ли ноль или какое-то положительное значение. Eсли предскано положительное значение, подключается модифицированное распределение для счетных данных, от которого "отрезаны" нули (truncated-at-zero distribution), и предсказывает счет.
+
+Проиллюстрировать работу этих моделей можно попробовать на данных из статьи о поведении орангутанов [@chappell2015ontogeny]. Авторы сразу подбирали ZIP модель, но оказалось, что ситуация может быть немного сложнее (или, вернее, проще).
+
+## TODO: Описание данных
+
+## Подготовка к анализу
+
+Загружаем необходимые пакеты.
+
 ```{r libs-funs}
+# Для чтения данных
+library(readxl)
+# Для предобработки данных
 library(tidyverse)
+# Для графиков
 library(cowplot)
 library(ggplot2)
 theme_set(theme_bw())
-library(readxl)
+# Для смешанных моделей
 library(lme4)
 library(glmmADMB)
 library(glmmTMB)
+# Для вспомогательных тестов
 library(sjstats)
+# Для пост-хоков
 library(emmeans)
+# Для графиков коэффициентов
+library(broom.mixed)
+library(dotwhisker)
 ```
+
+Читаем данные и готовим их к анализу. В исходной таблице с сайта PlosOne нехватает информации о числе дней, которое наблюдали за каждым орангутаном, но они есть в одной из таблиц в тексте. Добавим их в датафрейм.
 
 ```{r read-data}
-gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', sheet = 1)
-colnames(gap) <- c('name', 'age', 'forearm', 'AGC', 'behaviour', 'support')
-gap <- gap %>% mutate(name = factor(name), 
-                      behaviour = factor(behaviour), 
-                      support = factor(support), 
+gap <- read_excel('../../_data/gap-crossing-behaviour-Chappell-et-al-2015.xlsx', 
+                  sheet = 1, 
+                  col_types = c("text", "text", "numeric", "numeric", "text", "text"))
+# Переименовываем переменные
+colnames(gap) <- c("ID", "age","forearm", "AGC", "behaviour", "takeoff")
+
+# Возраста орангутанов
+ages =  c("1","2","3","4","5","6","7","8","9","10","11","AF","AM")
+# Порядок имен как в табл. 1
+names <- c("Mawas", "Kino", "Jip", "Deri", "Jerry", "Streisel", 
+           "Milo", "Kondor", "Juni", "Kerry", "Gismo", "Preman")
+# Порядок разных типов поведения с рис. 3
+behaviours <- c("NCU", "APP", "R", "R+APP", "S", "S+APP")
+# Время наблюдений из табл.1
+days <- c(10, 10, 10, 7, 10, 9, 7, 10, 5, 5, 4, 3)
+
+# Добавляем информацию про число дней наблюдений
+obs_time <- data.frame(ID = names, days, stringsAsFactors = FALSE)
+gap <- left_join(gap, obs_time)
+
+# Преобразуем в факторы и трансформируем то, что надо
+gap <- gap %>% mutate(ID = factor(ID, levels = names), 
+                      age = factor(age, levels = ages),
+                      behaviour = factor(behaviour, levels = behaviours), 
+                      takeoff = factor(takeoff), 
                       forearm_std = as.numeric(scale(forearm)))
-gap$name <- reorder(gap$name, gap$age, mean)
 ```
 
-### Введение
 
-Данные о поведении орангутанов [@chappell2015ontogeny].
+## Разведочный анализ
 
-Бла-бла
-
-### Разведочный анализ
-
-Очень несбалансированные данные.
-По одному орангутану каждого возраста (и с соотв. длиной руки).
-Много наблюдений за каждым орангутаном.
-Не все сочетания типа поведения и опоры есть для каждого орангутана. 
+Очень несбалансированные данные. По одному орангутану каждого возраста (и с соотв. длиной руки). Много наблюдений за каждым орангутаном, но есть не все сочетания типа поведения и опоры. 
 
 ```{r}
-with(gap, table(name, behaviour, support))
+with(gap, table(ID, behaviour, takeoff))
 ```
+
+Нет выбросов у зависимой переменной `AGC`. 
 
 ```{r dot-plot}
 plot_grid(
@@ -66,51 +127,269 @@ plot_grid(
   nrow = 1)
 ```
 
+Пропорция нулей невелика --- всего `r round(mean(gap$AGC == 0), 2) *100` %.
+
 ```{r zeros}
 mean(gap$AGC == 0)
-hist(gap$AGC)
 ```
 
-```{r response-by-subject}
-pos <- position_jitterdodge(jitter.width = 0.2, jitter.height = 0.4, dodge.width = 0.5)
-ggplot(gap, aes(x = name, y = AGC, fill = support, colour = support)) + 
-  geom_point(alpha = 0.5, position = pos) + 
-  facet_wrap(~ behaviour) + 
-  coord_flip() + 
-  theme(legend.position = 'bottom', axis.text.x = element_text(angle = 90, hjust = 1))
+## Воспроизведение части рисунков и анализов из статьи
+
+### Fig.3
+
+```{r}
+# Рассчитаем относительную частоту перелезаний.
+frec <- gap %>%
+  mutate(age = as.character(age)) %>% 
+  group_by(ID, age, behaviour) %>% 
+  summarise(.n = n(), freq = .n/unique(days)) %>% 
+  ungroup() %>% 
+  mutate(age = factor(age, levels = ages))
+# Собственно график №3
+ggplot(data = frec, aes(x = age, y = freq, fill = behaviour)) + 
+  geom_bar(stat = 'summary', fun.y = mean, position = position_dodge()) +
+  scale_x_discrete(drop = FALSE)
 ```
 
-### Poisson GLMM
+### Fig.4
+
+```{r}
+# Рассчитаем относительную частоту типов поддержки.
+take <- gap %>%
+  group_by(ID, age, takeoff) %>% 
+  summarise(.n = n(), 
+            freq = .n/unique(days)) %>% 
+  ungroup() %>% 
+  mutate(age = factor(age, levels = ages))
+
+# Fig.4
+ggplot(data = take, aes(x = age, y = freq, fill = takeoff)) + 
+  geom_bar(stat = 'summary', fun.y = mean, position = position_dodge()) +
+  scale_x_discrete(drop = FALSE)
+```
+
+### Table 2
+
+#### Наблюдаемые частоты
+
+Из-за того, что есть по два орангутана старших возрастов, наблюдаемые частоты разных типов поддержки по возрастам можно посчитать двумя способами.
+
+##### Способ 1: усреднение частот
+
+Можно сосчитать частоту для каждого ID, поделив на число дней для ID, затем усреднить частоты. Последняя строка в этом способе НЕ совпадает!!!
+
+```{r}
+take1 <- gap %>%
+  group_by(ID, age, takeoff) %>% 
+  summarise(.n = n(), 
+            freq = .n/unique(days)) %>% 
+  group_by(age, takeoff) %>%          # По возрастам и типам поддержки
+  summarise(freq = mean(freq)) %>%    # усредняем частоты
+    ungroup() %>% 
+  mutate(age = factor(age, levels = ages)) %>% 
+    arrange(age)
+t_obs1 <- matrix(floor(take1$freq), nrow = 10, byrow = TRUE)
+t_obs1
+
+# Хи-квадрат
+chi_all1 <- chisq.test(t_obs1)
+round(chi_all1$expected, 3)
+```
+
+##### Способ 2: частоты по суммарным данным
+
+Можно суммировать число наблюдений и дней по возрастам, затем сосчитать общую частоту. Предпоследняя строка в этом способе НЕ совпадает!!! Ровно в 2 раза.
+
+```{r}
+take2 <- gap %>%
+  group_by(age, takeoff) %>% 
+  summarise(.n = n(), 
+            days = sum(unique(days)),
+            freq = .n/days) %>% 
+  ungroup() %>% 
+  mutate(age = factor(age, levels = ages)) %>% 
+  arrange(age)
+t_obs2 <- matrix(floor(take2$freq), nrow = 10, byrow = TRUE)
+t_obs2
+
+# Хи-квадрат
+chi_all2 <- chisq.test(t_obs2)
+round(chi_all2$expected, 3)
+```
+
+#### Хи-квадрат как в статье
+
+Хи-квадрат в статье в табл.2 получен комбинацией обоих методов.
+
+```{r}
+# Матрица ожидаемых как в статье
+t_obs_rounded <- rbind(t_obs2[1:8, ], t_obs1[9, ], t_obs2[10, ])
+colSums(t_obs_rounded)
+rowSums(t_obs_rounded)
+
+# Без округления
+t_obs <- rbind(matrix(take2$freq, nrow = 10, byrow = TRUE)[1:8, ], 
+               matrix(take1$freq, nrow = 10, byrow = TRUE)[9, ],
+               matrix(take2$freq, nrow = 10, byrow = TRUE)[10, ])
+colSums(t_obs)
+rowSums(t_obs)
+
+# Хи-квадрат по таблице без округления - все совпало
+chi_all <- chisq.test(t_obs)
+round(chi_all$expected, 3)
+
+# Посчитаем Пирсоновские остатки (В статье именно Пирсоновские)
+round(resid(chi_all), 3)
+round((t_obs - chi_all$expected) / sqrt(chi_all$expected), 3)
+
+# # Стандартизованные остатки (Agresti, 2007, section 2.4.5 )
+# chi_all$stdres
+```
+
+### Fig.6
+
+```{r}
+ggplot(gap, aes(x = forearm, 
+                y = (AGC * 100) / forearm, color = behaviour)) + 
+  geom_point(position = position_jitter(width = 0.5))
+```
+
+
+## GLMM с распределением Пуассона
+
+### Модель
+
+Традиционно можно было бы начать с GLMM, основанной на распределении Пуассона. Авторы пропускают этот шаг, и сразу подбирают ZIP GLMM отметив, что в данных много нулей. Мы пойдем по порядку.
+
+$AGC_{ij} \sim Poisson(\mu_{ij})$  
+$E(AGC_{ij}) = \mu_{ij}$, $var(AGC_{ij}) = \mu_{ij}$  
+$\begin{aligned}log(\mu_{ij}) = \beta_0 + \beta_{2}Behav_{APP\ ij} + \beta_{3}Behav_{R\ ij} + \\ + \beta_{4}Behav_{RAPP\ ij} + \beta_{5}Behav_{S\ ij} + \beta_{6}Behav_{SAPP\ ij} + \\ + \beta_{7}Sup_{liana\ ij} + \beta_{8}Sup_{trunk\ ij} + \beta_{9}Arm_{std\ ij} + \\ + \beta_{10}Behav_{APP\ ij}Sup_{liana\ ij} + \beta_{11}Behav_{R\ ij}Sup_{liana\ ij} + \\+ \beta_{12}Behav_{RAPP\ ij}Sup_{liana\ ij} + \beta_{13}Behav_{S\ ij}Sup_{liana\ ij} + \\ + \beta_{14}Behav_{SAPP\ ij}Sup_{liana\ ij} + \beta_{15}Behav_{APP\ ij}Sup_{trunk\ ij} + \\ +  \beta_{16}Behav_{R\ ij}Sup_{trunk\ ij} + \beta_{17}Behav_{RAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{18}Behav_{S\ ij}Sup_{trunk\ ij} + \beta_{19}Behav_{SAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{20}Behav_{APP\ ij}Arm_{std\ ij} + \beta_{21}Behav_{R\ ij}Arm_{std\ ij} + \\ + \beta_{22}Behav_{RAPP\ ij}Arm_{std\ ij} + \beta_{23}Behav_{S\ ij}Arm_{std\ ij} + \\ + \beta_{24}Behav_{SAPP\ ij}Arm_{std\ ij} + \beta{25}Sup_{liana\ ij} Arm_{std\ ij} + \\ + \beta{26}Sup_{trunk\ ij} Arm_{std\ ij}ID_{j}\end{aligned}$   
+$b_j \sim N(0, \sigma^2_{ID})$
+
+Последняя строчка этого уравнения в матричном виде, т.к. в модели довольно много коэффициентов, ведь в нее входят два дискретных предиктора `takeoff` (способ поддержки) `behaviour` (тип поведения), непрерывный предиктор `forearm_std` (стандартизованная длина предплечья) и все двухфакторные взаимодействия между ними. 
+
+Кроме того, в модели есть случайный эффект индивидуума $b_j$.
+
+Наконец, здесь лучше стандартизовать непрерывный предиктор и увеличить число итераций, чтобы модель сошлась.
 
 ```{r mod-pois-lme4, cache=TRUE}
-M1 <- glmer(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'poisson', control = glmerControl(optimizer = 'bobyqa',
-                               optCtrl = list(maxfun = 2e6)))
+M1 <- glmer(AGC ~ (behaviour + takeoff + forearm_std)^2 + (1|ID), 
+            data = gap, family = 'poisson', 
+            control = glmerControl(optimizer = 'bobyqa', 
+                                   optCtrl = list(maxfun = 4e6)))
 ```
 
-```{r mod-pois-lme4-diag}
-AIC(M1)
+### Диагностика модели
+
+Проверим, соответствует ли зависимость дисперсии и среднего тому, что можно ожидать при распределении Пуассона.
+
+```{r mod-pois-lme4-overdisp}
 overdisp(M1)
-# Сверхдисперсии нет!!! Можно было бы продолжать дальше так
-plot(M1)
-
-# M2 <- glmer.nb(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap)
-# overdisp(M2)
-
-# M3 <- glmer(AGC ~ (behaviour + support + forearm_std)^2 + (1|name) + (1|OLRI), data = gap, family = 'poisson')
-# overdisp(M3)
 ```
 
+Сверхдисперсии нет! Можно было бы и дальше продолжать работать с этой моделью. Но, возможно, у нее есть еще другой недостаток. Нулей в данных сильно меньше, чем может предсказать Пуассоновская модель. Т.е. модель "перепредсказывает" число нулей.
 
-## Zero Inflated Poisson GLMM
+```{r mod-pois-lme4-zeros}
+zero_count(M1)
+```
 
-### ADMB
+На графиках остатков не заметно ничего особенно подозрительного.
+
+```{r mod-pois-lme4-resid}
+M1_diag <- data.frame(
+  gap,
+  .fitted = predict(M1, type = "response"),
+  .pears_resid = residuals(M1, type = "pearson"))
+plot_grid(
+  ggplot(M1_diag, aes(x = .fitted, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(M1_diag, aes(x = forearm_std, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(M1_diag, aes(x = ID, y = .pears_resid)) + geom_boxplot(),
+  ggplot(M1_diag, aes(x = behaviour, y = .pears_resid)) + geom_boxplot(),
+  ggplot(M1_diag, aes(x = takeoff, y = .pears_resid)) + geom_boxplot(),
+  nrow = 2)
+```
+
+Если мы посмотрим одновременно на остатки по типам поведения для разных орангутанов, то заметно, что модель плохо предсказывает AGC трех самых молодых орангутанов (большие остатки на графиках у величнт, для которых предсказано нулевое значение).
+
+```{r mod-pois-lme4-resid-categ}
+ggplot(M1_diag, aes(x = .fitted, y = .pears_resid, colour = behaviour)) +
+  geom_point(position = position_jitter(width = 0.1, height = 0.1), alpha = 0.3) +
+  facet_wrap(~ ID)
+```
+
+### Описание результатов
+
+Какая модель у нас получилась? Посмотрим на `summary()` и запишем уравнение.
+
+```{r mod-pois-lme4-resid-smr}
+summary(M1)
+```
+
+$AGC_{ij} \sim Poisson(\mu_{ij})$  
+$E(AGC_{ij}) = \mu_{ij}$, $var(AGC_{ij}) = \mu_{ij}$  
+$\begin{aligned}log(\mu_{ij}) = -1.753 + 1.569 Behav_{APP\ ij} + 1.805 Behav_{R\ ij} + \\ + 2.178 Behav_{RAPP\ ij} + 2.268 Behav_{S\ ij} + 2.002 Behav_{SAPP\ ij} + \\ + 0.938 Sup_{liana\ ij} + 1.377 Sup_{trunk\ ij} + 0.613 Arm_{std\ ij} - \\ - 0.767 Behav_{APP\ ij}Sup_{liana\ ij} - 0.656 Behav_{R\ ij}Sup_{liana\ ij} - \\ - 0.884 Behav_{RAPP\ ij}Sup_{liana\ ij} - 0.823 Behav_{S\ ij}Sup_{liana\ ij} - \\ - 0.309 Behav_{SAPP\ ij}Sup_{liana\ ij} - 1.265 Behav_{APP\ ij}Sup_{trunk\ ij} - \\ - 1.014 Behav_{R\ ij}Sup_{trunk\ ij} - 1.308 Behav_{RAPP\ ij}Sup_{trunk\ ij} - \\ - 1.339 Behav_{S\ ij}Sup_{trunk\ ij} - 0.949 Behav_{SAPP\ ij}Sup_{trunk\ ij} - \\ - 0.165 Behav_{APP\ ij}Arm_{std\ ij} - 0.273 Behav_{R\ ij}Arm_{std\ ij} - \\ - 0.153 Behav_{RAPP\ ij}Arm_{std\ ij} - 0.223 Behav_{S\ ij}Arm_{std\ ij} - \\ - 0.129 Behav_{SAPP\ ij}Arm_{std\ ij} - 0.271 Sup_{liana\ ij} Arm_{std\ ij} - \\ - 0.239 Sup_{trunk\ ij} Arm_{std\ ij} + ID_{j}\end{aligned}$   
+$b_j \sim N(0, \sigma^2_{ID})$
+
+
+Все взаимодействия, включенные в модель, оказались статистически значимыми (тесты отношения правдоподобий, $p < 0.01$). Т.е. длина пересекаемого промежутка между деревьями по-разному зависела от длины руки для разных типов поддержки и типов поведения. Так же на нее по-разному влиял тип поведения в зависимости от типа поддержки. 
+
+```{r mod-pois-deviance, cache=TRUE}
+drop1(M1, test = "Chi")
+```
+
+Чтобы узнать, в чем именно заключались различия, можно было бы сделать пост-хок тест. Например, для орангутанов среднего размера (со средней длиной предплечья).
+
+```{r}
+emmeans(M1, specs = pairwise ~ takeoff | behaviour, type = 'response')$contrasts
+```
+
+### График предсказаний модели
+
+
+```{r mod-pois-predict}
+new_data_M1 <- gap %>% group_by(behaviour, takeoff) %>% 
+  do(data.frame(forearm_std = unique(.$forearm_std), 
+                forearm = unique(.$forearm))) %>% 
+  ungroup()
+
+new_data_M1 <- new_data_M1 %>% 
+  mutate(.fit = predict(M1, new_data_M1, type = "response", re.form = NA))
+
+
+ggplot(new_data_M1, aes(x = forearm, y = .fit, colour = takeoff)) +
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(~ behaviour) + 
+  labs(y = 'Predicted AGC')
+```
+
+## Zero Inflated Poisson GLMM, подобранная при помощи `glmmADMB` как в статье
+
+### Модель
+
+Авторы статьи использовали Zero Inflated Poisson GLMM, мотивировав это наличием сверхдисперсии и большим числом нулей. Как мы это только что видели в предыдущей части, ситуация, скорее, обратная. Поэтому заранее можно предположить, что нам не поможет ZIP модель. Здесь мы ее обсудим только ради искусства.
+
+$AGC_{ij} \sim ZIP(\mu_{ij}, \pi_{ij})$  
+$E(AGC_{ij}) = (1 - \pi_{ij}) \mu_{ij}$, $var(AGC_{ij}) = \mu_{ij} + \cfrac{\pi_{ij}}{(1 - \pi_{ij})} \mu_{ij}^2 = (1 - \pi_{ij}) \mu_{ij}(1 + \mu_{ij}\pi_{ij})$  
+$logit(\pi_{ij}) = \beta_0$  
+$log(\mu_{ij}) = \beta_0 + \beta_{2}Behav_{APP\ ij} + \beta_{3}Behav_{R\ ij} + \\ + \beta_{4}Behav_{RAPP\ ij} + \beta_{5}Behav_{S\ ij} + \beta_{6}Behav_{SAPP\ ij} + \\ + \beta_{7}Sup_{liana\ ij} + \beta_{8}Sup_{trunk\ ij} + \beta_{9}Arm_{std\ ij} + \\ + \beta_{10}Behav_{APP\ ij}Sup_{liana\ ij} + \beta_{11}Behav_{R\ ij}Sup_{liana\ ij} + \\+ \beta_{12}Behav_{RAPP\ ij}Sup_{liana\ ij} + \beta_{13}Behav_{S\ ij}Sup_{liana\ ij} + \\ + \beta_{14}Behav_{SAPP\ ij}Sup_{liana\ ij} + \beta_{15}Behav_{APP\ ij}Sup_{trunk\ ij} + \\ +  \beta_{16}Behav_{R\ ij}Sup_{trunk\ ij} + \beta_{17}Behav_{RAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{18}Behav_{S\ ij}Sup_{trunk\ ij} + \beta_{19}Behav_{SAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{20}Behav_{APP\ ij}Arm_{std\ ij} + \beta_{21}Behav_{R\ ij}Arm_{std\ ij} + \\ + \beta_{22}Behav_{RAPP\ ij}Arm_{std\ ij} + \beta_{23}Behav_{S\ ij}Arm_{std\ ij} + \\ + \beta_{24}Behav_{SAPP\ ij}Arm_{std\ ij} + \beta{25}Sup_{liana\ ij} Arm_{std\ ij} + \\ + \beta{26}Sup_{trunk\ ij} Arm_{std\ ij}ID_{j}$   
+$b_j \sim N(0, \sigma^2_{ID})$
+
+$\pi$ --- вероятность нуля из биномиальной части.
+
 
 ```{r mod-zip-admb, cache=TRUE}
-Z1 <- glmmadmb(AGC ~ (behaviour + support + forearm_std)^2 , data = gap, family = 'poisson', zeroInflation = TRUE, random = ~ (1|name))
+# Z1 <- glmmadmb(AGC ~ (behaviour + takeoff + forearm_std)^2 , 
+# data = gap, family = 'poisson', zeroInflation = TRUE, random = ~ (1|ID))
+# save(Z1, file = 'Z1.RData')
+load('Z1.RData')
 ```
 
-```{r mod-zip-admb-diag}
-summary(Z1)
+### Диагностика модели
+
+Проверка на сверхдисперсию.
+
+```{r mod-zip-admb-overdisp}
 p <- length(fixef(Z1)) + length(ranef(Z1)) + Z1$zeroInflation
 sum(resid(Z1, type = 'pearson')^2) / (nrow(gap) - p)
 
@@ -120,18 +399,18 @@ sum(resid(Z1, type = 'pearson')^2) / (nrow(gap) - p)
 
 # Сверхдисперсия вручную
 # Пуассоновская часть
-X_count <- model.matrix(~ (behaviour + support + forearm_std)^2, data = gap)
+X_count <- model.matrix(~ (behaviour + takeoff + forearm_std)^2, data = gap)
 beta_count <- fixef(Z1)
-name_ID <- as.numeric(as.factor(gap$name))
-a <- ranef(Z1)$name
+name_ID <- as.numeric(factor(gap$ID, levels = names))
+a <- ranef(Z1)$ID
 mu_count <- exp(X_count %*% beta_count + a[name_ID])
 # fitted(Z1) это на самом деле mu_count
 # head(cbind(fitted(Z1), mu_count, E_y))
-
-# Биномиальная часть отсутствует. Не понимаю, как это получается, но ее результаты уже включены в пуассоновскую часть
+# Биномиальная часть отсутствует. Не понимаю, как
+# это получается, но ее результаты уже включены в
+# пуассоновскую часть
 # И вот это уже можно не включать в расчеты
 # pi_zi <- exp(Z1$pz)/(1 + exp(Z1$pz))
-
 # Считаем пирсоновские остатки вручную
 # Формулы для матожидания и дисперсии будут
 # использоваться для Пуассоновской части
@@ -139,70 +418,227 @@ mu_count <- exp(X_count %*% beta_count + a[name_ID])
 # Var(y) = mu
 E_y <- mu_count
 Var_y <- mu_count
-# And calculate the Pearson residuals
+# Пирсоновские остатки
 e_pears <- (gap$AGC - E_y) / sqrt(Var_y)
 N <- nrow(gap)
 p <- length(fixef(Z1)) + length(ranef(Z1)) + Z1$zeroInflation
 sum(e_pears^2)/(N - p)
 ```
 
-### TMB
+```{r mod-zip-admb-zero}
+# zero_count(Z1)
+# Как установили во время рассчета степени сверхдисперсии, 
+# биномиальная часть отсутствует.
+mu_Z1 <- predict(Z1, type = "response")
+# Предсказанное число нулей
+(pred_zero <- round(sum(dpois(x = 0, lambda = mu_Z1))))
+# Наблюдаемое число нулей
+(obs_zero <- sum(gap$AGC == 0))
+# Соотношение
+pred_zero/obs_zero
+```
 
-Альтернативный вариант подбора в glmmTMB быстрый, но нет полезных функций. Например, Пирсоновские остатки приходится считать вручную.
+Графики остатков.
 
-```{r mod-pois-tmb, cache=TRUE}
-B1 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'poisson')
-overdisp(B1)
+```{r mod-zip-admb-resid}
+Z1_diag <- data.frame(
+  gap,
+  .fitted = predict(Z1, type = "response"),
+  .pears_resid = residuals(Z1, type = "pearson"))
+plot_grid(
+  ggplot(Z1_diag, aes(x = .fitted, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(Z1_diag, aes(x = forearm_std, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(Z1_diag, aes(x = ID, y = .pears_resid)) + geom_boxplot(),
+  ggplot(Z1_diag, aes(x = behaviour, y = .pears_resid)) + geom_boxplot(),
+  ggplot(Z1_diag, aes(x = takeoff, y = .pears_resid)) + geom_boxplot(),
+  nrow = 2)
+```
 
-# B2 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = 'NB2')
-# overdisp(B2)
-# 
-# B3 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name) + (1|OLRI), data = gap, family = 'poisson')
-# overdisp(B3)
+### Описание результатов
+
+```{r mod-zip-admb-deviance, cache=TRUE}
+drop1(Z1)
+```
+
+
+### График предсказаний модели
+
+
+```{r mod-zip-admb-predict}
+new_data_Z1 <- gap %>% group_by(behaviour, takeoff) %>% 
+  do(data.frame(forearm_std = unique(.$forearm_std), 
+                forearm = unique(.$forearm))) %>% 
+  ungroup()
+
+new_data_Z1 <- new_data_Z1 %>% 
+  mutate(.fit = predict(Z1, new_data_Z1, type = "response"))
+
+
+ggplot(new_data_Z1, aes(x = forearm, y = .fit, colour = takeoff)) +
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(~ behaviour) + 
+  labs(y = 'Predicted AGC')
+```
+
+
+## Zero Inflated Poisson GLMM, подобранная при помощи `glmmADMB` как в статье
+
+### Модель
+
+Альтернативный вариант подбора ZIP GLMMM при помощи пакета `glmmTMB` гораздо более быстрый, но в нем нет многих полезных функций. Например, Пирсоновские остатки приходится считать вручную.
+
+Формулу модели для сопоставимости можем взять такую же, как в модели для `glmmadmb()`, хотя `glmmTMB()` умеет подбирать и гораздо более сложные модели с предикторами и случайными эффектами в бинарной части модели.
+
+$AGC_{ij} \sim ZIP(\mu_{ij}, \pi_{ij})$  
+$E(AGC_{ij}) = (1 - \pi_{ij}) \mu_{ij}$, $var(AGC_{ij}) = \mu_{ij} + \cfrac{\pi_{ij}}{(1 - \pi_{ij})} \mu_{ij}^2 = (1 - \pi_{ij}) \mu_{ij}(1 + \mu_{ij}\pi_{ij})$  
+$logit(\pi_{ij}) = \beta_0$  
+$log(\mu_{ij}) = \beta_0 + \beta_{2}Behav_{APP\ ij} + \beta_{3}Behav_{R\ ij} + \\ + \beta_{4}Behav_{RAPP\ ij} + \beta_{5}Behav_{S\ ij} + \beta_{6}Behav_{SAPP\ ij} + \\ + \beta_{7}Sup_{liana\ ij} + \beta_{8}Sup_{trunk\ ij} + \beta_{9}Arm_{std\ ij} + \\ + \beta_{10}Behav_{APP\ ij}Sup_{liana\ ij} + \beta_{11}Behav_{R\ ij}Sup_{liana\ ij} + \\+ \beta_{12}Behav_{RAPP\ ij}Sup_{liana\ ij} + \beta_{13}Behav_{S\ ij}Sup_{liana\ ij} + \\ + \beta_{14}Behav_{SAPP\ ij}Sup_{liana\ ij} + \beta_{15}Behav_{APP\ ij}Sup_{trunk\ ij} + \\ +  \beta_{16}Behav_{R\ ij}Sup_{trunk\ ij} + \beta_{17}Behav_{RAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{18}Behav_{S\ ij}Sup_{trunk\ ij} + \beta_{19}Behav_{SAPP\ ij}Sup_{trunk\ ij} + \\ + \beta_{20}Behav_{APP\ ij}Arm_{std\ ij} + \beta_{21}Behav_{R\ ij}Arm_{std\ ij} + \\ + \beta_{22}Behav_{RAPP\ ij}Arm_{std\ ij} + \beta_{23}Behav_{S\ ij}Arm_{std\ ij} + \\ + \beta_{24}Behav_{SAPP\ ij}Arm_{std\ ij} + \beta{25}Sup_{liana\ ij} Arm_{std\ ij} + \\ + \beta{26}Sup_{trunk\ ij} Arm_{std\ ij}ID_{j}$   
+$b_j \sim N(0, \sigma^2_{ID})$
+
+$\pi$ --- вероятность нуля из биномиальной части.
+
+```{r mod-pois-tmb, cache=TRUE, echo=FALSE}
+# Из любопытства можно подобрать и обычную Пуассоновскую GLMM,
+# чтобы проверить как все выглядит в этом пакете
+B_pois <- glmmTMB(AGC ~ (behaviour + takeoff + forearm_std)^2 + (1|ID), data = gap, family = 'poisson')
+overdisp(B_pois)
 ```
 
 ```{r mod-zip-tmb, cache=TRUE}
-B4 <- glmmTMB(AGC ~ (behaviour + support + forearm_std)^2 + (1|name), data = gap, family = poisson, ziformula = ~ 1)
+B1 <- glmmTMB(AGC ~ (behaviour + takeoff + forearm_std)^2 + (1|ID), data = gap, family = poisson, ziformula = ~ 1)
 ```
 
+### Диагностика модели
+
+Проверка на сверхдисперсию.
+
 ```{r mod-zip-tmb-diag}
-summary(B4)
 # пирсоновские остатки не считаются
-# resid(B4, type = 'pearson')
-# overdisp(B4)
+# resid(B1, type = 'pearson')
+# overdisp(B1)
 # Сверхдисперсия вручную
 # Пуассоновская часто
-X_count <- model.matrix(~ (behaviour + support + forearm_std)^2, data = gap)
-beta_count <- fixef(B4)$cond
-name_ID <- as.numeric(as.factor(gap$name))
-a <- ranef(B4)$cond$name
+X_count <- model.matrix(~ (behaviour + takeoff + forearm_std)^2, data = gap)
+beta_count <- fixef(B1)$cond
+name_ID <- as.numeric(factor(gap$ID, levels = names))
+a <- ranef(B1)$cond$ID
 mu_count <- exp(X_count %*% beta_count + a[name_ID,])
 # Биномиальная часть
 X_zi <- model.matrix(~ 1, data = gap)
-beta_zi <- fixef(B4)$zi
+beta_zi <- fixef(B1)$zi
 pi_zi <- exp(X_zi %*% beta_zi)/(1 + exp(X_zi %*% beta_zi))
 # Считаем пирсоновские остатки вручную
 # Формулы для матожидания и дисперсии
-# E(y) = (1 - pi_zi) * mu
+# E(y) = (1 - pi) * mu
 # Var(y) = mu + pi / (1 - pi) *  mu^2 
-# Кстати, это так же = (1−π)μ(1+μπ)
+# Кстати, это то же самое, что Var(y) = (1−π)μ(1+μπ)
 E_y <- (1 - pi_zi) * mu_count
 Var_y <- mu_count + pi_zi  / (1 - pi_zi) * mu_count^2
 # Пирсоновские остатки
 e_pears <- (gap$AGC - E_y) / sqrt(Var_y)
 # Сверхдисперсия
 N <- nrow(gap)
-p <- length(fixef(B4)$cond) + length(fixef(B4)$zi) + 1
+p <- length(fixef(B1)$cond) + length(fixef(B1)$zi) + 1
 sum(e_pears^2)/(N - p)
 # Ок
-
-# Графики остатков
-plot(fitted(B4), e_pears)
-plot(gap$behaviour, e_pears)
-plot(gap$support, e_pears)
-plot(gap$name, e_pears)
-plot(gap$forearm, e_pears)
-plot(gap$age, e_pears)
-# 
 ```
+
+Графики остатков
+
+```{r mod-zip-tmb-resid}
+B1_diag <- data.frame(
+  gap,
+  .fitted = predict(B1, type = "response"),
+  .pears_resid = e_pears)
+plot_grid(
+  ggplot(B1_diag, aes(x = .fitted, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(B1_diag, aes(x = forearm_std, y = .pears_resid)) + geom_point() + geom_smooth(),
+  ggplot(B1_diag, aes(x = ID, y = .pears_resid)) + geom_boxplot(),
+  ggplot(B1_diag, aes(x = behaviour, y = .pears_resid)) + geom_boxplot(),
+  ggplot(B1_diag, aes(x = takeoff, y = .pears_resid)) + geom_boxplot(),
+  nrow = 2)
+```
+
+### Описание результатов
+
+```{r mod-zip-tmb-deviance, cache=TRUE}
+# drop1(B1)
+
+```
+
+### График предсказаний
+
+#### С учетом случайного эффекта
+
+```{r mod-zip-tmb-predict-re}
+new_data_B1_re <- gap %>% group_by(ID, behaviour, takeoff) %>% 
+  do(data.frame(forearm_std = unique(.$forearm_std), 
+                forearm = unique(.$forearm))) %>% 
+  ungroup()
+
+new_data_B1_re <- new_data_B1_re %>% 
+  mutate(.fit = predict(B1, new_data_B1_re, type = "response"))
+
+ggplot(new_data_B1_re, aes(x = forearm, y = .fit, colour = takeoff)) +
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(~ behaviour) + 
+  labs(y = 'Predicted AGC with ran.ef.')
+```
+
+#### Без учета случайного эффекта
+
+```{r mod-zip-tmb-predict}
+# Делаем вручную, т.к. или только со случайным эффектом, или ошибка
+# Error in predict.glmmTMB(B1, new_data_B1, type = "response", re.form = NA) : 
+  # re.form not yet implemented
+
+new_data_B1 <- gap %>% group_by(behaviour, takeoff) %>% 
+  do(data.frame(forearm_std = unique(.$forearm_std), 
+                forearm = unique(.$forearm))) %>% 
+  ungroup()
+
+# Счетная часть
+X_count <- model.matrix(~ (behaviour + takeoff + forearm_std)^2, data = new_data_B1)
+betas_count <- fixef(B1)$cond
+mu_count <- exp(X_count %*% betas_count)
+
+# Бинарная часть
+X_bin <- model.matrix(~ 1, data = new_data_B1)
+betas_bin <- fixef(B1)$zi
+inv_logit <- function(x) exp(x)/(1 + exp(x))
+pi_bin <- inv_logit(X_bin %*% betas_bin)
+
+# E(y) = (1 - pi) * mu
+new_data <- .fit <- (1 - pi_bin) * mu_count
+
+
+ggplot(new_data_B1, aes(x = forearm, y = .fit, colour = takeoff)) +
+  geom_point() + 
+  geom_line() + 
+  facet_wrap(~ behaviour) + 
+  labs(y = 'Predicted AGC with ran.ef.')
+```
+
+
+## Сравнение оценок коэффициентов
+
+Модели разных типов и подобранные при помощи разных пакетов дают поразительно похожие оценки коэффициентов фиксированной части.
+
+```{r}
+dwplot(list(M1, Z1, B1), effects = 'fixed')
+```
+
+## TODO: Выводы из анализа
+
+
+## Что дальше? (TODO)
+
+1. Для полноты картины не хватает доверительных зон на графиках предсказаний.
+1. Нужна валидация моделей при помощи симуляций, чтобы проверить, насколько хорошо они предсказывают не только нули, но и другие значения.
+1. Нужны ссылки на литературу или список рекомендованной литературы.
+1. Пуассоновская GLMM, о которой говорили выше, предсказывает слишком много нулей по сравнению с тем, что есть в данных. Естественно, использование ZIP модели не поможет исправить ситуацию. Можно попробовать подобрать Zero-altered Poisson модель (ZAP, Poisson hurdle-model). Другой пост?
+
+ 
 
